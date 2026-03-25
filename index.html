@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mike - AI German Tutor</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+      background-color: #f8f9fa;
+      margin: 0;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+    .container {
+      max-width: 500px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #avatar {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background-color: #1e90ff;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .chat-box {
+      width: 100%;
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      min-height: 150px;
+      box-sizing: border-box;
+    }
+    #mike-text {
+      margin: 0 0 1rem 0;
+      color: #2f3542;
+      font-size: 1.1rem;
+      line-height: 1.5;
+    }
+    #user-text {
+      margin: 0;
+      color: #57606f;
+      font-style: italic;
+    }
+    button {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      color: white;
+      background-color: #2ed573;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(46, 213, 115, 0.3);
+      font-weight: bold;
+      width: 100%;
+      max-width: 300px;
+      transition: transform 0.1s, background-color 0.3s;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    button:disabled {
+      background-color: #a4b0be;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div id="avatar">Mike</div>
+    
+    <div class="chat-box">
+      <p id="mike-text"><strong>Mike:</strong> Hallo! Ich bin Mike, dein Deutschlehrer. (Hello! I am Mike, your German tutor.)</p>
+      <p id="user-text"><strong>You:</strong> ...</p>
+    </div>
+
+    <button id="talk-btn">Tap to Speak German</button>
+  </div>
+
+  <script type="module">
+    import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
+
+    // IMPORTANT: Replace this with your actual Google AI Studio API key
+    const API_KEY = 'YOUR_API_KEY_HERE'; 
+    const genAI = new GoogleGenerativeAI(API_KEY);
+
+    const talkBtn = document.getElementById('talk-btn');
+    const avatar = document.getElementById('avatar');
+    const mikeTextEl = document.getElementById('mike-text');
+    const userTextEl = document.getElementById('user-text');
+
+    let isListening = false;
+    let isThinking = false;
+
+    // Ensure voices are loaded
+    window.speechSynthesis.getVoices();
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (!SpeechRecognition) {
+      talkBtn.disabled = true;
+      talkBtn.innerText = "Browser not supported";
+      alert("Your browser does not support Speech Recognition. Please use Chrome.");
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'de-DE';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    talkBtn.addEventListener('click', () => {
+      if (isListening || isThinking) return;
+      recognition.start();
+    });
+
+    recognition.onstart = () => {
+      isListening = true;
+      updateUI();
+    };
+
+    recognition.onresult = (event) => {
+      const userText = event.results[0][0].transcript;
+      userTextEl.innerHTML = `<strong>You:</strong> ${userText}`;
+      handleSendToAI(userText);
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+      isListening = false;
+      updateUI();
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      updateUI();
+    };
+
+    async function handleSendToAI(text) {
+      isThinking = true;
+      updateUI();
+      
+      try {
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        
+        // I have pre-configured this prompt to be highly specific to practical, budget-conscious travel scenarios for a small group.
+        const prompt = `You are Mike, a friendly AI German language tutor. The user is practicing for an upcoming 2-week trip to Germany with two other people. They are traveling on a budget. Keep your responses short, correct their grammar gently, and focus on practical situations like navigating transport, finding affordable meals, or booking accommodations for three. User said: "${text}". Respond ONLY in German.`;
+
+        const result = await model.generateContent(prompt);
+        const aiReply = result.response.text();
+        
+        mikeTextEl.innerHTML = `<strong>Mike:</strong> ${aiReply}`;
+        speakResponse(aiReply);
+      } catch (error) {
+        console.error("Error:", error);
+        mikeTextEl.innerHTML = `<strong>Mike:</strong> Entschuldigung, es gab einen Fehler. (Sorry, there was an error.)`;
+      } finally {
+        isThinking = false;
+        updateUI();
+      }
+    }
+
+    function speakResponse(text) {
+      window.speechSynthesis.cancel(); 
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'de-DE';
+      
+      const voices = window.speechSynthesis.getVoices();
+      const germanVoices = voices.filter(voice => voice.lang.includes('de'));
+      const maleVoice = germanVoices.find(voice => voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('david'));
+      
+      if (maleVoice) {
+        utterance.voice = maleVoice;
+      } else if (germanVoices.length > 0) {
+        utterance.voice = germanVoices[0]; 
+      }
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function updateUI() {
+      if (isListening) {
+        avatar.style.backgroundColor = '#ff4757';
+        avatar.innerText = 'Zuhören...';
+        talkBtn.innerText = 'Speak now...';
+        talkBtn.disabled = true;
+      } else if (isThinking) {
+        avatar.style.backgroundColor = '#ffa502';
+        avatar.innerText = 'Denken...';
+        talkBtn.innerText = 'Thinking...';
+        talkBtn.disabled = true;
+      } else {
+        avatar.style.backgroundColor = '#1e90ff';
+        avatar.innerText = 'Mike';
+        talkBtn.innerText = 'Tap to Speak German';
+        talkBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
