@@ -1,219 +1,1754 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mike - AI German Tutor</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 2rem;
-      background-color: #f8f9fa;
-      margin: 0;
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-    .container {
-      max-width: 500px;
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    #avatar {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background-color: #1e90ff;
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.2rem;
-      font-weight: bold;
-      transition: background-color 0.3s ease;
-      margin-bottom: 2rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    .chat-box {
-      width: 100%;
-      background-color: white;
-      padding: 1.5rem;
-      border-radius: 12px;
-      margin-bottom: 2rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      min-height: 150px;
-      box-sizing: border-box;
-    }
-    #mike-text {
-      margin: 0 0 1rem 0;
-      color: #2f3542;
-      font-size: 1.1rem;
-      line-height: 1.5;
-    }
-    #user-text {
-      margin: 0;
-      color: #57606f;
-      font-style: italic;
-    }
-    button {
-      padding: 1rem 2rem;
-      font-size: 1.1rem;
-      color: white;
-      background-color: #2ed573;
-      border: none;
-      border-radius: 50px;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(46, 213, 115, 0.3);
-      font-weight: bold;
-      width: 100%;
-      max-width: 300px;
-      transition: transform 0.1s, background-color 0.3s;
-    }
-    button:active {
-      transform: scale(0.98);
-    }
-    button:disabled {
-      background-color: #a4b0be;
-      cursor: not-allowed;
-      box-shadow: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>DeutschMeister – AI German Tutor (Gemini)</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,600;0,900;1,300;1,600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d10;
+    --surface: #16161c;
+    --surface2: #1e1e28;
+    --border: #2a2a38;
+    --accent: #e8c547;
+    --accent2: #7b5ea7;
+    --text: #f0ede8;
+    --muted: #888899;
+    --user-bubble: #1e2a3a;
+    --ai-bubble: #1a1a22;
+    --danger: #e05c5c;
+    --success: #5ce07a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Background grain */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    z-index: 10;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text {
+    font-family: 'Fraunces', serif;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+  }
+
+  .logo-text span { color: var(--accent); }
+
+  .header-right {
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  .level-badge {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--accent);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .level-badge:hover { background: var(--border); }
+
+  .api-btn {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .api-btn:hover { opacity: 0.85; }
+
+  /* Mode tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    flex-shrink: 0;
+    scrollbar-width: none;
+    z-index: 10;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    flex-shrink: 0;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    color: var(--muted);
+    background: transparent;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+  }
+  .tab:hover:not(.active) {
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  /* Main content */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Chat panel */
+  .chat-panel {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .welcome-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 8px;
+  }
+
+  .welcome-card h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .welcome-card p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 14px;
+  }
+
+  .quick-prompts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+  }
+
+  .quick-prompt {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 7px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+  }
+  .quick-prompt:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Messages */
+  .message {
+    display: flex;
+    gap: 10px;
+    animation: fadeIn 0.3s ease;
+    max-width: 100%;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .message.user { flex-direction: row-reverse; }
+
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+
+  .avatar.ai {
+    background: var(--accent2);
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    font-family: 'Fraunces', serif;
+  }
+
+  .avatar.user {
+    background: var(--accent);
+    color: #000;
+    font-size: 14px;
+  }
+
+  .bubble {
+    max-width: calc(100% - 48px);
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .message.ai .bubble {
+    background: var(--ai-bubble);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+
+  .message.user .bubble {
+    background: var(--user-bubble);
+    border: 1px solid #2a3d55;
+    border-top-right-radius: 4px;
+  }
+
+  .bubble strong { color: var(--accent); }
+
+  .bubble .german-word {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .bubble .correction {
+    background: rgba(224, 92, 92, 0.15);
+    border-left: 3px solid var(--danger);
+    padding: 8px 10px;
+    border-radius: 0 8px 8px 0;
+    margin: 6px 0;
+    font-size: 13px;
+  }
+
+  .bubble .tip {
+    background: rgba(232, 197, 71, 0.1);
+    border-left: 3px solid var(--accent);
+    padding: 8px 10px;
+    border-radius: 0 8px 8px 0;
+    margin: 6px 0;
+    font-size: 13px;
+  }
+
+  .bubble .example {
+    background: rgba(123, 94, 167, 0.15);
+    border-left: 3px solid var(--accent2);
+    padding: 8px 10px;
+    border-radius: 0 8px 8px 0;
+    margin: 6px 0;
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 14px 16px;
+  }
+  .typing-indicator span {
+    width: 7px; height: 7px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30% { transform: translateY(-6px); }
+  }
+
+  /* Input area */
+  .input-area {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .input-box {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: 'DM Sans', sans-serif;
+    resize: none;
+    min-height: 44px;
+    max-height: 120px;
+    overflow-y: auto;
+    outline: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+  }
+  .input-box:focus { border-color: var(--accent); }
+  .input-box::placeholder { color: var(--muted); }
+
+  .send-btn {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .send-btn:hover { opacity: 0.85; }
+  .send-btn:active { transform: scale(0.95); }
+  .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .send-btn svg { width: 20px; height: 20px; fill: #000; }
+
+  .input-hint {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  /* Mode panels */
+  .mode-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .mode-panel.active { display: flex; }
+
+  /* Vocabulary panel */
+  .vocab-panel {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .vocab-topics {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .topic-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .topic-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+  .topic-card .emoji { font-size: 28px; display: block; margin-bottom: 6px; }
+  .topic-card .label { font-size: 13px; font-weight: 500; }
+
+  .flashcard-container {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+
+  .flashcard-de {
+    font-family: 'Fraunces', serif;
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--accent);
+    margin-bottom: 4px;
+  }
+
+  .flashcard-article {
+    font-size: 14px;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+
+  .flashcard-en {
+    font-size: 18px;
+    color: var(--text);
+    margin-bottom: 16px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .flashcard-en.revealed { opacity: 1; }
+
+  .flashcard-example {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .flashcard-example.revealed { opacity: 1; }
+
+  .card-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  .card-btn {
+    padding: 9px 20px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+  .card-btn:hover { opacity: 0.8; }
+  .card-btn.reveal { background: var(--accent2); color: #fff; }
+  .card-btn.know { background: var(--success); color: #000; }
+  .card-btn.again { background: var(--danger); color: #fff; }
+
+  /* Grammar panel */
+  .grammar-panel {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+  }
+
+  .grammar-topics {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .grammar-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .grammar-item:hover { border-color: var(--accent2); }
+
+  .grammar-item-left { display: flex; align-items: center; gap: 10px; }
+  .grammar-item .tag {
+    background: rgba(123, 94, 167, 0.2);
+    color: var(--accent2);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .grammar-item-title { font-size: 14px; font-weight: 500; }
+  .grammar-item-arrow { color: var(--muted); font-size: 16px; }
+
+  /* API key modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 28px 24px;
+    max-width: 400px;
+    width: 100%;
+  }
+
+  .modal h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .modal p {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  .modal p a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .modal-input:focus { border-color: var(--accent); }
+
+  .modal-actions { display: flex; gap: 10px; }
+
+  .modal-save {
+    flex: 1;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+  .modal-save:hover { opacity: 0.85; }
+
+  .modal-cancel {
+    flex: 1;
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+  .modal-cancel:hover { opacity: 0.75; }
+
+  /* Level selector modal */
+  .level-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .level-option {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .level-option:hover, .level-option.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .level-option .lvl { font-size: 18px; font-weight: 700; font-family: 'Fraunces', serif; }
+
+  /* Rendered bubble content */
+  .bubble ul { padding-left: 18px; margin: 4px 0; }
+  .bubble li { margin: 3px 0; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  /* Voice button */
+  .mic-btn {
+    width: 44px; height: 44px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.2s;
+    font-size: 18px;
+  }
+  .mic-btn:hover { border-color: var(--accent2); }
+  .mic-btn.recording {
+    background: rgba(224,92,92,0.15);
+    border-color: var(--danger);
+    animation: pulse-mic 1s infinite;
+  }
+  @keyframes pulse-mic {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(224,92,92,0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(224,92,92,0); }
+  }
+  .mic-btn.disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Voice status bar */
+  .voice-status {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    background: rgba(224,92,92,0.1);
+    border-top: 1px solid rgba(224,92,92,0.25);
+    font-size: 13px;
+    color: var(--danger);
+    flex-shrink: 0;
+  }
+  .voice-status.active { display: flex; }
+  .voice-status .dot {
+    width: 8px; height: 8px;
+    background: var(--danger);
+    border-radius: 50%;
+    animation: blink 0.8s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* Speak button on AI bubbles */
+  .speak-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 8px;
+    padding: 3px 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .speak-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .speak-btn.speaking { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Voice mode overlay */
+  .voice-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(13,13,16,0.97);
+    z-index: 50;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+  }
+  .voice-overlay.active { display: flex; }
+
+  .voice-orb {
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, var(--accent2), #3a1a5e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .voice-orb:hover { transform: scale(1.05); }
+  .voice-orb.listening {
+    animation: orb-pulse 1.2s ease-in-out infinite;
+  }
+  .voice-orb.speaking-orb {
+    animation: orb-speak 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes orb-pulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(123,94,167,0.5), 0 0 0 20px rgba(123,94,167,0.2); }
+    50% { box-shadow: 0 0 0 20px rgba(123,94,167,0.3), 0 0 0 40px rgba(123,94,167,0.1); }
+  }
+  @keyframes orb-speak {
+    from { transform: scale(1); box-shadow: 0 0 20px rgba(232,197,71,0.3); }
+    to { transform: scale(1.08); box-shadow: 0 0 40px rgba(232,197,71,0.5); }
+  }
+
+  .voice-label {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 600;
+    text-align: center;
+  }
+  .voice-sublabel {
+    font-size: 14px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 260px;
+    line-height: 1.5;
+  }
+  .voice-transcript {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 18px;
+    font-size: 15px;
+    min-width: 260px;
+    max-width: 320px;
+    text-align: center;
+    min-height: 52px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .voice-close {
+    position: absolute;
+    top: 20px; right: 20px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+  .voice-close:hover { color: var(--text); border-color: var(--text); }
+
+  .voice-actions {
+    display: flex; gap: 12px;
+  }
+  .voice-action-btn {
+    padding: 10px 22px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    transition: opacity 0.2s;
+  }
+  .voice-action-btn:hover { opacity: 0.85; }
+  .voice-action-btn.primary { background: var(--accent); color: #000; }
+  .voice-action-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+  .no-speech-note {
+    font-size: 12px;
+    color: var(--muted);
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  .no-api-banner {
+    background: rgba(232,197,71,0.1);
+    border: 1px solid rgba(232,197,71,0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .progress-bar-outer {
+    background: var(--border);
+    border-radius: 99px;
+    height: 4px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .progress-bar-inner {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.4s ease;
+  }
+
+  .xp-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .streak {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #ff9f40;
+  }
+</style>
 </head>
 <body>
 
-  <div class="container">
-    <div id="avatar">Mike</div>
-    
-    <div class="chat-box">
-      <p id="mike-text"><strong>Mike:</strong> Hallo! Ich bin Mike, dein Deutschlehrer. (Hello! I am Mike, your German tutor.)</p>
-      <p id="user-text"><strong>You:</strong> ...</p>
-    </div>
+<!-- Voice Mode Overlay -->
+<div class="voice-overlay" id="voiceOverlay">
+  <div class="voice-close" onclick="closeVoiceMode()">✕</div>
+  <div class="voice-orb" id="voiceOrb" onclick="toggleListening()">🎙️</div>
+  <div class="voice-label" id="voiceLabel">Tap to speak</div>
+  <div class="voice-sublabel">Speak in German or English — your AI tutor will listen and respond</div>
+  <div class="voice-transcript" id="voiceTranscript">...</div>
+  <div class="voice-actions">
+    <button class="voice-action-btn secondary" onclick="closeVoiceMode()">✕ Close</button>
+    <button class="voice-action-btn primary" id="voiceSendBtn" onclick="sendVoiceMessage()" style="display:none;">Send ›</button>
+  </div>
+  <div class="no-speech-note" id="noSpeechNote"></div>
+</div>
 
-    <button id="talk-btn">Tap to Speak German</button>
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <h3>🔑 Enter Gemini API Key</h3>
+    <p>DeutschMeister uses the <strong style="color:var(--accent)">free</strong> <a href="https://aistudio.google.com/apikey" target="_blank">Google Gemini API</a>. Get your free key at <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> — no credit card needed!</p>
+    <input class="modal-input" type="password" id="apiKeyInput" placeholder="AIza..." />
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeApiModal()">Cancel</button>
+      <button class="modal-save" onclick="saveApiKey()">Save & Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- Level Modal -->
+<div class="modal-overlay hidden" id="levelModal">
+  <div class="modal">
+    <h3>🎯 Your German Level</h3>
+    <p>Select your current German proficiency so the tutor adapts to you.</p>
+    <div class="level-grid">
+      <div class="level-option" onclick="selectLevel('A1')"><div class="lvl">A1</div>Beginner</div>
+      <div class="level-option" onclick="selectLevel('A2')"><div class="lvl">A2</div>Elementary</div>
+      <div class="level-option selected" onclick="selectLevel('B1')"><div class="lvl">B1</div>Intermediate</div>
+      <div class="level-option" onclick="selectLevel('B2')"><div class="lvl">B2</div>Upper-Int</div>
+      <div class="level-option" onclick="selectLevel('C1')"><div class="lvl">C1</div>Advanced</div>
+      <div class="level-option" onclick="selectLevel('C2')"><div class="lvl">C2</div>Mastery</div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-save" onclick="closeLevelModal()">Confirm Level</button>
+    </div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">🇩🇪</div>
+    <div class="logo-text">Deutsch<span>Meister</span></div>
+  </div>
+  <div class="header-right">
+    <div class="streak" id="streakBadge">🔥 1</div>
+    <div class="level-badge" onclick="openLevelModal()" id="levelDisplay">B1</div>
+    <button class="api-btn" onclick="openApiModal()">API Key</button>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('chat', this)">💬 Chat Tutor</div>
+  <div class="tab" onclick="switchTab('vocab', this)">📚 Vocabulary</div>
+  <div class="tab" onclick="switchTab('grammar', this)">📐 Grammar</div>
+  <div class="tab" onclick="switchTab('practice', this)">✍️ Practice</div>
+</div>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- CHAT TAB -->
+  <div class="mode-panel active" id="tab-chat" style="display:flex;flex-direction:column;">
+    <div class="chat-panel" id="chatPanel">
+      <div id="noApiBanner" class="no-api-banner" style="display:none;">
+        ⚠️ Add your free Google Gemini API key to activate the AI tutor →
+        <button onclick="openApiModal()" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Add Key</button>
+      </div>
+      <div class="welcome-card">
+        <h2>Willkommen! 👋</h2>
+        <p>Your AI German tutor is ready. Chat in German or English — I'll correct mistakes, explain grammar, and help you improve naturally.</p>
+        <div class="quick-prompts">
+          <button class="quick-prompt" onclick="sendQuick('Teach me how to introduce myself in German')">👤 Introduce myself</button>
+          <button class="quick-prompt" onclick="sendQuick('What is the difference between der, die, and das?')">⚡ der/die/das</button>
+          <button class="quick-prompt" onclick="sendQuick('Can we have a simple conversation in German? I am a beginner.')">💬 Simple conversation</button>
+          <button class="quick-prompt" onclick="sendQuick('Give me 5 most useful German phrases for travel')">✈️ Travel phrases</button>
+          <button class="quick-prompt" onclick="sendQuick('Explain German word order rules simply')">📖 Word order</button>
+          <button class="quick-prompt" onclick="sendQuick('Quiz me on German numbers 1-20')">🔢 Numbers quiz</button>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-row">
+        <button class="mic-btn" id="micBtn" onclick="startVoiceMode()" title="Voice input">🎙️</button>
+        <textarea class="input-box" id="userInput" placeholder="Type in German or English…" rows="1" onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">🎙️ Tap mic to speak • Enter to send</div>
+    </div>
   </div>
 
-  <script type="module">
-    import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai';
+  <!-- VOCAB TAB -->
+  <div class="mode-panel" id="tab-vocab">
+    <div class="vocab-panel">
+      <div class="section-title">📚 Vocabulary Topics</div>
+      <div class="vocab-topics">
+        <div class="topic-card" onclick="loadFlashcards('greetings')"><span class="emoji">👋</span><span class="label">Greetings</span></div>
+        <div class="topic-card" onclick="loadFlashcards('family')"><span class="emoji">👨‍👩‍👧</span><span class="label">Family</span></div>
+        <div class="topic-card" onclick="loadFlashcards('food')"><span class="emoji">🍕</span><span class="label">Food & Drink</span></div>
+        <div class="topic-card" onclick="loadFlashcards('numbers')"><span class="emoji">🔢</span><span class="label">Numbers</span></div>
+        <div class="topic-card" onclick="loadFlashcards('colors')"><span class="emoji">🎨</span><span class="label">Colors</span></div>
+        <div class="topic-card" onclick="loadFlashcards('travel')"><span class="emoji">✈️</span><span class="label">Travel</span></div>
+        <div class="topic-card" onclick="loadFlashcards('body')"><span class="emoji">🧍</span><span class="label">Body Parts</span></div>
+        <div class="topic-card" onclick="loadFlashcards('time')"><span class="emoji">⏰</span><span class="label">Time & Days</span></div>
+      </div>
 
-    // IMPORTANT: Replace this with your actual Google AI Studio API key
-    const API_KEY = 'YOUR_API_KEY_HERE'; 
-    const genAI = new GoogleGenerativeAI(API_KEY);
+      <div class="section-title">🗂️ Flashcard Practice</div>
+      <div class="flashcard-container" id="flashcardBox">
+        <div class="flashcard-de" id="fcDE">—</div>
+        <div class="flashcard-article" id="fcArticle">Select a topic above to start</div>
+        <div class="flashcard-en" id="fcEN">—</div>
+        <div class="flashcard-example" id="fcExample">—</div>
+      </div>
+      <div class="card-actions" id="cardActions">
+        <button class="card-btn reveal" onclick="revealCard()">👁️ Reveal</button>
+      </div>
+    </div>
+  </div>
 
-    const talkBtn = document.getElementById('talk-btn');
-    const avatar = document.getElementById('avatar');
-    const mikeTextEl = document.getElementById('mike-text');
-    const userTextEl = document.getElementById('user-text');
+  <!-- GRAMMAR TAB -->
+  <div class="mode-panel" id="tab-grammar">
+    <div class="grammar-panel">
+      <div class="section-title">📐 Grammar Topics</div>
+      <div class="grammar-topics" id="grammarTopics">
+        <div class="grammar-item" onclick="learnGrammar('German Articles: der, die, das')">
+          <div class="grammar-item-left"><span class="tag">A1</span><span class="grammar-item-title">Articles: der, die, das</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German verb conjugation for sein and haben in present tense')">
+          <div class="grammar-item-left"><span class="tag">A1</span><span class="grammar-item-title">Verb Conjugation (sein & haben)</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German word order: verb in second position and subordinate clauses')">
+          <div class="grammar-item-left"><span class="tag">A2</span><span class="grammar-item-title">Word Order (V2 Rule)</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German cases: Nominative, Accusative, Dative, Genitive')">
+          <div class="grammar-item-left"><span class="tag">A2</span><span class="grammar-item-title">The 4 Cases</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German modal verbs: können, müssen, wollen, dürfen, sollen, mögen')">
+          <div class="grammar-item-left"><span class="tag">B1</span><span class="grammar-item-title">Modal Verbs</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German Perfekt tense: formation with haben and sein')">
+          <div class="grammar-item-left"><span class="tag">B1</span><span class="grammar-item-title">Perfekt (Past Tense)</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German separable verbs: how they work and common examples')">
+          <div class="grammar-item-left"><span class="tag">B1</span><span class="grammar-item-title">Separable Verbs</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German Konjunktiv II: conditional mood and würden construction')">
+          <div class="grammar-item-left"><span class="tag">B2</span><span class="grammar-item-title">Konjunktiv II (Conditional)</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German Passiv voice: werden + Partizip II')">
+          <div class="grammar-item-left"><span class="tag">B2</span><span class="grammar-item-title">Passive Voice</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+        <div class="grammar-item" onclick="learnGrammar('German relative clauses: Relativsätze with correct relative pronouns')">
+          <div class="grammar-item-left"><span class="tag">C1</span><span class="grammar-item-title">Relative Clauses</span></div>
+          <span class="grammar-item-arrow">›</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
-    let isListening = false;
-    let isThinking = false;
+  <!-- PRACTICE TAB -->
+  <div class="mode-panel" id="tab-practice" style="flex-direction:column;">
+    <div class="chat-panel" id="practicePanel">
+      <div class="welcome-card">
+        <h2>✍️ Writing Practice</h2>
+        <p>Write in German and get instant corrections, explanations, and suggestions. Perfect for building confidence!</p>
+        <div class="quick-prompts">
+          <button class="quick-prompt" onclick="startPractice('Give me a writing prompt in German for a B1 level student. Then wait for my response.')">📝 Give me a prompt</button>
+          <button class="quick-prompt" onclick="startPractice('Please correct this German text I wrote and explain each mistake')">🔍 Correct my text</button>
+          <button class="quick-prompt" onclick="startPractice('Translate this sentence and explain the grammar: \"I have been learning German for 2 years\"')">🔄 Translation exercise</button>
+          <button class="quick-prompt" onclick="startPractice('Give me a fill-in-the-blank exercise with German articles (der/die/das/den/dem)')">📋 Fill in the blanks</button>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-row">
+        <textarea class="input-box" id="practiceInput" placeholder="Write in German here…" rows="1" onkeydown="handlePracticeKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="practiceSendBtn" onclick="sendPractice()">
+          <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Get corrections and explanations for your German writing</div>
+    </div>
+  </div>
 
-    // Ensure voices are loaded
-    window.speechSynthesis.getVoices();
+</div>
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    
-    if (!SpeechRecognition) {
-      talkBtn.disabled = true;
-      talkBtn.innerText = "Browser not supported";
-      alert("Your browser does not support Speech Recognition. Please use Chrome.");
+<script>
+let apiKey = localStorage.getItem('dm_gemini_key') || '';
+let userLevel = localStorage.getItem('dm_level') || 'B1';
+let chatHistory = [];
+let practiceHistory = [];
+let streak = parseInt(localStorage.getItem('dm_streak') || '1');
+let isLoading = false;
+
+// Flashcard data
+const vocabData = {
+  greetings: [
+    { de: 'Hallo', article: '', en: 'Hello', example: 'Hallo! Wie geht es dir? — Hello! How are you?' },
+    { de: 'Guten Morgen', article: '', en: 'Good morning', example: 'Guten Morgen! Hast du gut geschlafen? — Good morning! Did you sleep well?' },
+    { de: 'Guten Abend', article: '', en: 'Good evening', example: 'Guten Abend, wie war dein Tag? — Good evening, how was your day?' },
+    { de: 'Auf Wiedersehen', article: '', en: 'Goodbye', example: 'Auf Wiedersehen! Bis morgen! — Goodbye! See you tomorrow!' },
+    { de: 'Bitte', article: '', en: 'Please / You\'re welcome', example: 'Danke! — Bitte! — Thank you! — You\'re welcome!' },
+    { de: 'Danke schön', article: '', en: 'Thank you very much', example: 'Danke schön für Ihre Hilfe. — Thank you very much for your help.' },
+    { de: 'Entschuldigung', article: '', en: 'Excuse me / Sorry', example: 'Entschuldigung, wo ist der Bahnhof? — Excuse me, where is the train station?' },
+    { de: 'Wie geht es Ihnen?', article: '', en: 'How are you? (formal)', example: 'Guten Tag! Wie geht es Ihnen? — Good day! How are you?' },
+  ],
+  family: [
+    { de: 'die Mutter', article: 'die (fem.)', en: 'mother', example: 'Meine Mutter kocht sehr gut. — My mother cooks very well.' },
+    { de: 'der Vater', article: 'der (masc.)', en: 'father', example: 'Mein Vater arbeitet als Arzt. — My father works as a doctor.' },
+    { de: 'die Schwester', article: 'die (fem.)', en: 'sister', example: 'Meine Schwester ist älter als ich. — My sister is older than me.' },
+    { de: 'der Bruder', article: 'der (masc.)', en: 'brother', example: 'Ich habe zwei Brüder. — I have two brothers.' },
+    { de: 'die Großmutter', article: 'die (fem.)', en: 'grandmother', example: 'Meine Großmutter macht den besten Kuchen. — My grandmother makes the best cake.' },
+    { de: 'der Großvater', article: 'der (masc.)', en: 'grandfather', example: 'Der Großvater erzählt Geschichten. — The grandfather tells stories.' },
+    { de: 'das Kind', article: 'das (neut.)', en: 'child', example: 'Das Kind spielt im Garten. — The child plays in the garden.' },
+  ],
+  food: [
+    { de: 'das Brot', article: 'das (neut.)', en: 'bread', example: 'Ich esse jeden Morgen Brot. — I eat bread every morning.' },
+    { de: 'die Milch', article: 'die (fem.)', en: 'milk', example: 'Kinder trinken viel Milch. — Children drink a lot of milk.' },
+    { de: 'der Käse', article: 'der (masc.)', en: 'cheese', example: 'Deutschland ist für Käse bekannt. — Germany is known for cheese.' },
+    { de: 'das Wasser', article: 'das (neut.)', en: 'water', example: 'Ich möchte ein Glas Wasser, bitte. — I would like a glass of water, please.' },
+    { de: 'die Kartoffel', article: 'die (fem.)', en: 'potato', example: 'Kartoffeln sind sehr typisch deutsch. — Potatoes are very typically German.' },
+    { de: 'das Fleisch', article: 'das (neut.)', en: 'meat', example: 'Ich esse kein Fleisch. — I don\'t eat meat.' },
+    { de: 'das Bier', article: 'das (neut.)', en: 'beer', example: 'Deutsches Bier ist weltberühmt. — German beer is world-famous.' },
+  ],
+  numbers: [
+    { de: 'eins', article: '', en: '1 (one)', example: 'Ich habe einen Bruder. — I have one brother.' },
+    { de: 'zwei', article: '', en: '2 (two)', example: 'Ich spreche zwei Sprachen. — I speak two languages.' },
+    { de: 'drei', article: '', en: '3 (three)', example: 'Drei Äpfel, bitte! — Three apples, please!' },
+    { de: 'zehn', article: '', en: '10 (ten)', example: 'Er ist zehn Jahre alt. — He is ten years old.' },
+    { de: 'zwanzig', article: '', en: '20 (twenty)', example: 'Zwanzig Minuten bis zum Zug. — Twenty minutes until the train.' },
+    { de: 'hundert', article: '', en: '100 (hundred)', example: 'Hundert Prozent richtig! — One hundred percent correct!' },
+  ],
+  colors: [
+    { de: 'rot', article: '', en: 'red', example: 'Das rote Auto ist sehr schnell. — The red car is very fast.' },
+    { de: 'blau', article: '', en: 'blue', example: 'Der Himmel ist blau. — The sky is blue.' },
+    { de: 'grün', article: '', en: 'green', example: 'Das Gras ist grün. — The grass is green.' },
+    { de: 'gelb', article: '', en: 'yellow', example: 'Die Sonne ist gelb. — The sun is yellow.' },
+    { de: 'schwarz', article: '', en: 'black', example: 'Die Katze ist schwarz. — The cat is black.' },
+    { de: 'weiß', article: '', en: 'white', example: 'Der Schnee ist weiß. — The snow is white.' },
+    { de: 'braun', article: '', en: 'brown', example: 'Der Tisch ist braun. — The table is brown.' },
+  ],
+  travel: [
+    { de: 'der Bahnhof', article: 'der (masc.)', en: 'train station', example: 'Wie komme ich zum Bahnhof? — How do I get to the train station?' },
+    { de: 'das Hotel', article: 'das (neut.)', en: 'hotel', example: 'Das Hotel hat fünf Sterne. — The hotel has five stars.' },
+    { de: 'der Flughafen', article: 'der (masc.)', en: 'airport', example: 'Der Flughafen ist weit weg. — The airport is far away.' },
+    { de: 'die Fahrkarte', article: 'die (fem.)', en: 'ticket (travel)', example: 'Wo kann ich eine Fahrkarte kaufen? — Where can I buy a ticket?' },
+    { de: 'links', article: '', en: 'left', example: 'Biegen Sie links ab. — Turn left.' },
+    { de: 'rechts', article: '', en: 'right', example: 'Das Restaurant ist rechts. — The restaurant is on the right.' },
+    { de: 'geradeaus', article: '', en: 'straight ahead', example: 'Gehen Sie geradeaus. — Go straight ahead.' },
+  ],
+  body: [
+    { de: 'der Kopf', article: 'der (masc.)', en: 'head', example: 'Mein Kopf tut weh. — My head hurts.' },
+    { de: 'die Hand', article: 'die (fem.)', en: 'hand', example: 'Gib mir deine Hand! — Give me your hand!' },
+    { de: 'das Auge', article: 'das (neut.)', en: 'eye', example: 'Sie hat blaue Augen. — She has blue eyes.' },
+    { de: 'der Mund', article: 'der (masc.)', en: 'mouth', example: 'Öffne deinen Mund! — Open your mouth!' },
+    { de: 'das Ohr', article: 'das (neut.)', en: 'ear', example: 'Das Kind hat große Ohren. — The child has big ears.' },
+    { de: 'der Fuß', article: 'der (masc.)', en: 'foot', example: 'Mein Fuß schmerzt. — My foot is hurting.' },
+  ],
+  time: [
+    { de: 'heute', article: '', en: 'today', example: 'Was machst du heute? — What are you doing today?' },
+    { de: 'morgen', article: '', en: 'tomorrow', example: 'Wir treffen uns morgen. — We\'ll meet tomorrow.' },
+    { de: 'gestern', article: '', en: 'yesterday', example: 'Gestern war ein schöner Tag. — Yesterday was a beautiful day.' },
+    { de: 'der Montag', article: 'der (masc.)', en: 'Monday', example: 'Am Montag gehe ich zur Arbeit. — On Monday I go to work.' },
+    { de: 'die Woche', article: 'die (fem.)', en: 'week', example: 'Diese Woche bin ich sehr beschäftigt. — This week I am very busy.' },
+    { de: 'das Jahr', article: 'das (neut.)', en: 'year', example: 'Lernst du schon ein Jahr Deutsch? — Have you been learning German for a year already?' },
+  ]
+};
+
+let currentDeck = [];
+let currentCardIndex = 0;
+let cardRevealed = false;
+
+// Init
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('levelDisplay').textContent = userLevel;
+  document.getElementById('streakBadge').textContent = '🔥 ' + streak;
+  if (!apiKey) {
+    document.getElementById('noApiBanner').style.display = 'flex';
+  }
+});
+
+// Tab switching
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// API Key modal
+function openApiModal() {
+  document.getElementById('apiKeyInput').value = apiKey;
+  document.getElementById('apiModal').classList.remove('hidden');
+}
+function closeApiModal() { document.getElementById('apiModal').classList.add('hidden'); }
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (key) {
+    apiKey = key;
+    localStorage.setItem('dm_gemini_key', key);
+    document.getElementById('noApiBanner').style.display = 'none';
+  }
+  closeApiModal();
+}
+
+// Level modal
+function openLevelModal() {
+  document.getElementById('levelModal').classList.remove('hidden');
+  document.querySelectorAll('.level-option').forEach(el => {
+    el.classList.toggle('selected', el.textContent.startsWith(userLevel));
+  });
+}
+function closeLevelModal() { document.getElementById('levelModal').classList.add('hidden'); }
+function selectLevel(lvl) {
+  userLevel = lvl;
+  localStorage.setItem('dm_level', lvl);
+  document.getElementById('levelDisplay').textContent = lvl;
+  document.querySelectorAll('.level-option').forEach(el => {
+    el.classList.toggle('selected', el.querySelector('.lvl').textContent === lvl);
+  });
+}
+
+// Auto resize textarea
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+function handlePracticeKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendPractice();
+  }
+}
+
+// Chat
+function sendQuick(msg) {
+  document.getElementById('userInput').value = msg;
+  sendMessage();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+  if (!apiKey) { openApiModal(); return; }
+
+  appendMessage('user', text, 'chatPanel');
+  chatHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  const typing = appendTyping('chatPanel');
+  isLoading = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  try {
+    const response = await callClaude(chatHistory, getChatSystemPrompt());
+    typing.remove();
+    appendMessage('ai', response, 'chatPanel');
+    chatHistory.push({ role: 'assistant', content: response });
+  } catch (e) {
+    typing.remove();
+    appendMessage('ai', friendlyError(e), 'chatPanel');
+  }
+
+  isLoading = false;
+  document.getElementById('sendBtn').disabled = false;
+}
+
+async function sendPractice() {
+  const input = document.getElementById('practiceInput');
+  const text = input.value.trim();
+  if (!text || isLoading) return;
+  if (!apiKey) { openApiModal(); return; }
+
+  appendMessage('user', text, 'practicePanel');
+  practiceHistory.push({ role: 'user', content: text });
+  input.value = '';
+  input.style.height = 'auto';
+  const typing = appendTyping('practicePanel');
+  isLoading = true;
+  document.getElementById('practiceSendBtn').disabled = true;
+
+  try {
+    const response = await callClaude(practiceHistory, getPracticeSystemPrompt());
+    typing.remove();
+    appendMessage('ai', response, 'practicePanel');
+    practiceHistory.push({ role: 'assistant', content: response });
+  } catch (e) {
+    typing.remove();
+    appendMessage('ai', friendlyError(e), 'practicePanel');
+  }
+
+  isLoading = false;
+  document.getElementById('practiceSendBtn').disabled = false;
+}
+
+function startPractice(msg) {
+  document.getElementById('practiceInput').value = msg;
+  sendPractice();
+}
+
+async function learnGrammar(topic) {
+  switchTab('chat', document.querySelectorAll('.tab')[0]);
+  document.getElementById('userInput').value = `Explain this German grammar topic clearly with examples: ${topic}`;
+  sendMessage();
+}
+
+// Friendly error messages
+function friendlyError(e) {
+  if (e.status === 429) {
+    const msgs = [
+      "😴 Ich bin müde! (I'm tired!) We've hit the free quota limit. Let's continue tomorrow — du machst das super!",
+      "🛌 Genug für heute! (Enough for today!) The daily limit is reached. Come back tomorrow and we'll keep going!",
+      "⏰ Pause time! We've used up today's free quota. Rest up, review your notes, and let's chat again tomorrow. Bis morgen!",
+    ];
+    return msgs[Math.floor(Math.random() * msgs.length)];
+  }
+  if (e.status === 400) return "❌ Bad request — your API key might be invalid. Click 'API Key' to re-enter it.";
+  if (e.status === 403) return "🔑 Access denied — please check your Gemini API key is correct.";
+  if (e.status === 503 || e.status === 500) return "🔧 Gemini is taking a short break. Try again in a few seconds!";
+  return "❌ Oops! " + e.message + " — try again or check your API key.";
+}
+
+// Gemini API
+async function callClaude(messages, systemPrompt) {
+  // Convert chat history to Gemini format
+  const geminiMessages = messages.slice(-20).map(m => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }]
+  }));
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiMessages,
+        generationConfig: {
+          maxOutputTokens: 1000,
+          temperature: 0.7
+        }
+      })
     }
+  );
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'de-DE';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const apiErr = new Error(err.error?.message || `HTTP ${res.status}`);
+    apiErr.status = res.status;
+    throw apiErr;
+  }
 
-    talkBtn.addEventListener('click', () => {
-      if (isListening || isThinking) return;
-      recognition.start();
+  const data = await res.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
+}
+
+function getChatSystemPrompt() {
+  return `You are DeutschMeister, an expert, encouraging AI German language tutor. The student's level is ${userLevel}.
+
+Your approach:
+- Adapt explanations to their ${userLevel} level
+- When they write in German, ALWAYS check for errors and gently correct them
+- Explain corrections clearly and briefly
+- Use the format: ✅ Correction: [corrected text] → [explanation]
+- Provide example sentences with both German and English translation
+- Be warm, encouraging, and motivating
+- If they write in English, respond in English but include German examples
+- If they write in German, respond mostly in German (with English support for ${userLevel} ≤ B1)
+- When introducing vocabulary, include the article (der/die/das)
+- Use emojis sparingly but effectively
+- Keep responses concise and digestible — not overwhelming
+- Celebrate their progress!`;
+}
+
+function getPracticeSystemPrompt() {
+  return `You are DeutschMeister, an expert German writing coach. The student's level is ${userLevel}.
+
+Your role:
+- When given German text to correct: identify ALL grammatical errors, spelling mistakes, and unnatural phrasing
+- Format each correction clearly: ❌ Original → ✅ Corrected — 💡 Because: [brief explanation]
+- After corrections, give an improved version of the full text
+- When giving writing prompts: make them appropriate for ${userLevel} level
+- When giving exercises: provide answers and explanations
+- Be thorough but encouraging
+- End with a motivating tip or observation about their German`;
+}
+
+// UI helpers
+function appendMessage(role, text, panelId) {
+  const panel = document.getElementById(panelId);
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.innerHTML = `
+    <div class="avatar ${role}">${role === 'ai' ? 'DM' : '👤'}</div>
+    <div class="bubble">${formatMessage(text)}</div>
+  `;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+  return div;
+}
+
+function appendTyping(panelId) {
+  const panel = document.getElementById(panelId);
+  const div = document.createElement('div');
+  div.className = 'message ai';
+  div.innerHTML = `
+    <div class="avatar ai">DM</div>
+    <div class="bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+  `;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+  return div;
+}
+
+function formatMessage(text) {
+  // Escape HTML
+  let t = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Bold
+  t = t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  // Italic
+  t = t.replace(/\*(.*?)\*/g, '<em>$1</em>');
+  // Corrections block
+  t = t.replace(/(❌.*?\n.*?✅.*?)(?=\n|$)/g, '<div class="correction">$1</div>');
+  // Tips
+  t = t.replace(/(💡.*?)(?=\n\n|$)/g, '<div class="tip">$1</div>');
+  // Examples (lines with "—" like German – English)
+  t = t.replace(/^(.*? — .*)$/gm, '<div class="example">$1</div>');
+  // Line breaks
+  t = t.replace(/\n/g, '<br>');
+  return t;
+}
+
+// Flashcards
+function loadFlashcards(topic) {
+  currentDeck = [...vocabData[topic]];
+  currentDeck.sort(() => Math.random() - 0.5);
+  currentCardIndex = 0;
+  cardRevealed = false;
+  showCard();
+}
+
+function showCard() {
+  if (currentDeck.length === 0) return;
+  const card = currentDeck[currentCardIndex];
+  document.getElementById('fcDE').textContent = card.de;
+  document.getElementById('fcArticle').textContent = card.article || '(no article)';
+  document.getElementById('fcEN').textContent = card.en;
+  document.getElementById('fcEN').classList.remove('revealed');
+  document.getElementById('fcExample').textContent = card.example;
+  document.getElementById('fcExample').classList.remove('revealed');
+  cardRevealed = false;
+  document.getElementById('cardActions').innerHTML = `<button class="card-btn reveal" onclick="revealCard()">👁️ Reveal</button>`;
+}
+
+function revealCard() {
+  document.getElementById('fcEN').classList.add('revealed');
+  document.getElementById('fcExample').classList.add('revealed');
+  cardRevealed = true;
+  document.getElementById('cardActions').innerHTML = `
+    <button class="card-btn again" onclick="nextCard(false)">🔁 Again</button>
+    <button class="card-btn know" onclick="nextCard(true)">✓ Know it!</button>
+  `;
+}
+
+function nextCard(knew) {
+  if (!knew) {
+    currentDeck.push(currentDeck[currentCardIndex]);
+  }
+  currentCardIndex++;
+  if (currentCardIndex >= currentDeck.length) {
+    document.getElementById('fcDE').textContent = '🎉 Done!';
+    document.getElementById('fcArticle').textContent = 'Great job! Pick another topic.';
+    document.getElementById('fcEN').textContent = '';
+    document.getElementById('fcEN').classList.remove('revealed');
+    document.getElementById('fcExample').textContent = '';
+    document.getElementById('fcExample').classList.remove('revealed');
+    document.getElementById('cardActions').innerHTML = '';
+    return;
+  }
+  showCard();
+}
+
+// ─── VOICE SUPPORT ───────────────────────────────────────────────
+
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+let voiceTranscriptText = '';
+let currentlySpeaking = false;
+let speechSynth = window.speechSynthesis;
+
+function initRecognition() {
+  if (!SpeechRecognition) return null;
+  const r = new SpeechRecognition();
+  r.continuous = false;
+  r.interimResults = true;
+  r.lang = 'de-DE'; // Start in German; falls back to detecting English too
+  r.maxAlternatives = 1;
+
+  r.onstart = () => {
+    isListening = true;
+    document.getElementById('voiceOrb').classList.add('listening');
+    document.getElementById('voiceOrb').textContent = '🎙️';
+    document.getElementById('voiceLabel').textContent = 'Listening…';
+    document.getElementById('voiceTranscript').textContent = '🎤 Speak now…';
+    document.getElementById('voiceSendBtn').style.display = 'none';
+    document.getElementById('noSpeechNote').textContent = '';
+  };
+
+  r.onresult = (e) => {
+    let interim = '';
+    let final = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const t = e.results[i][0].transcript;
+      if (e.results[i].isFinal) final += t;
+      else interim += t;
+    }
+    voiceTranscriptText = (final || interim).trim();
+    document.getElementById('voiceTranscript').textContent = voiceTranscriptText || '…';
+    if (final) {
+      document.getElementById('voiceSendBtn').style.display = 'inline-flex';
+    }
+  };
+
+  r.onerror = (e) => {
+    isListening = false;
+    document.getElementById('voiceOrb').classList.remove('listening');
+    document.getElementById('voiceLabel').textContent = 'Tap to speak';
+    if (e.error === 'no-speech') {
+      document.getElementById('noSpeechNote').textContent = 'No speech detected. Try again.';
+      document.getElementById('voiceTranscript').textContent = '…';
+    } else if (e.error === 'not-allowed') {
+      document.getElementById('noSpeechNote').textContent = '⚠️ Microphone permission denied. Please allow mic access in your browser settings.';
+    } else {
+      document.getElementById('noSpeechNote').textContent = 'Error: ' + e.error;
+    }
+  };
+
+  r.onend = () => {
+    isListening = false;
+    document.getElementById('voiceOrb').classList.remove('listening');
+    if (voiceTranscriptText) {
+      document.getElementById('voiceLabel').textContent = 'Got it!';
+      document.getElementById('voiceSendBtn').style.display = 'inline-flex';
+    } else {
+      document.getElementById('voiceLabel').textContent = 'Tap to speak';
+    }
+  };
+
+  return r;
+}
+
+function startVoiceMode() {
+  if (!SpeechRecognition) {
+    alert('Voice input is not supported in this browser. Please use Chrome, Edge, or Safari.');
+    return;
+  }
+  voiceTranscriptText = '';
+  document.getElementById('voiceOverlay').classList.add('active');
+  document.getElementById('voiceTranscript').textContent = 'Tap the mic to start speaking…';
+  document.getElementById('voiceLabel').textContent = 'Tap to speak';
+  document.getElementById('voiceSendBtn').style.display = 'none';
+  document.getElementById('noSpeechNote').textContent = '';
+  document.getElementById('voiceOrb').classList.remove('listening', 'speaking-orb');
+  document.getElementById('voiceOrb').textContent = '🎙️';
+  stopSpeaking();
+}
+
+function closeVoiceMode() {
+  document.getElementById('voiceOverlay').classList.remove('active');
+  if (recognition && isListening) recognition.stop();
+  isListening = false;
+  stopSpeaking();
+}
+
+function toggleListening() {
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+  recognition = initRecognition();
+  if (!recognition) return;
+  voiceTranscriptText = '';
+  document.getElementById('voiceSendBtn').style.display = 'none';
+  try {
+    recognition.start();
+  } catch(e) {
+    document.getElementById('noSpeechNote').textContent = 'Could not start mic. Try again.';
+  }
+}
+
+async function sendVoiceMessage() {
+  const text = voiceTranscriptText.trim();
+  if (!text) return;
+  if (!apiKey) { closeVoiceMode(); openApiModal(); return; }
+
+  // Show transcript in chat
+  document.getElementById('voiceLabel').textContent = 'Getting response…';
+  document.getElementById('voiceOrb').textContent = '⏳';
+  document.getElementById('voiceSendBtn').style.display = 'none';
+
+  // Add to chat
+  appendMessage('user', '🎙️ ' + text, 'chatPanel');
+  chatHistory.push({ role: 'user', content: text });
+
+  try {
+    const response = await callClaude(chatHistory, getVoiceSystemPrompt());
+    chatHistory.push({ role: 'assistant', content: response });
+    appendMessage('ai', response, 'chatPanel');
+
+    // Speak the response in German
+    document.getElementById('voiceOrb').classList.add('speaking-orb');
+    document.getElementById('voiceOrb').textContent = '🔊';
+    document.getElementById('voiceLabel').textContent = 'Speaking…';
+    document.getElementById('voiceTranscript').textContent = stripForSpeech(response);
+
+    speakText(response, () => {
+      document.getElementById('voiceOrb').classList.remove('speaking-orb');
+      document.getElementById('voiceOrb').textContent = '🎙️';
+      document.getElementById('voiceLabel').textContent = 'Tap to speak again';
+      document.getElementById('voiceTranscript').textContent = '…';
+      voiceTranscriptText = '';
     });
 
-    recognition.onstart = () => {
-      isListening = true;
-      updateUI();
-    };
+  } catch(e) {
+    const msg = friendlyError(e);
+    document.getElementById('voiceLabel').textContent = e.status === 429 ? 'Quota reached!' : 'Error — try again';
+    document.getElementById('voiceOrb').textContent = e.status === 429 ? '😴' : '🎙️';
+    document.getElementById('voiceTranscript').textContent = msg;
+    document.getElementById('noSpeechNote').textContent = '';
+    // Also show in chat
+    appendMessage('ai', msg, 'chatPanel');
+  }
+}
 
-    recognition.onresult = (event) => {
-      const userText = event.results[0][0].transcript;
-      userTextEl.innerHTML = `<strong>You:</strong> ${userText}`;
-      handleSendToAI(userText);
-    };
+function getVoiceSystemPrompt() {
+  return `You are DeutschMeister, a friendly German tutor speaking to a ${userLevel} level student via VOICE.
+Keep responses SHORT and conversational — max 3 sentences. 
+Speak naturally as if talking aloud.
+If they spoke German, respond mostly in German with brief English clarification.
+If they spoke English, respond in English with key German words/phrases.
+Correct mistakes warmly and briefly. No bullet points, no markdown, no symbols — just natural spoken text.`;
+}
 
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
-      isListening = false;
-      updateUI();
-    };
+// ─── TEXT-TO-SPEECH ───────────────────────────────────────────────
 
-    recognition.onend = () => {
-      isListening = false;
-      updateUI();
-    };
+function speakText(text, onDone) {
+  stopSpeaking();
+  if (!speechSynth) { if (onDone) onDone(); return; }
 
-    async function handleSendToAI(text) {
-      isThinking = true;
-      updateUI();
-      
-      try {
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-        
-        // I have pre-configured this prompt to be highly specific to practical, budget-conscious travel scenarios for a small group.
-        const prompt = `You are Mike, a friendly AI German language tutor. The user is practicing for an upcoming 2-week trip to Germany with two other people. They are traveling on a budget. Keep your responses short, correct their grammar gently, and focus on practical situations like navigating transport, finding affordable meals, or booking accommodations for three. User said: "${text}". Respond ONLY in German.`;
+  const cleaned = stripForSpeech(text);
+  const utterance = new SpeechSynthesisUtterance(cleaned);
 
-        const result = await model.generateContent(prompt);
-        const aiReply = result.response.text();
-        
-        mikeTextEl.innerHTML = `<strong>Mike:</strong> ${aiReply}`;
-        speakResponse(aiReply);
-      } catch (error) {
-        console.error("Error:", error);
-        mikeTextEl.innerHTML = `<strong>Mike:</strong> Entschuldigung, es gab einen Fehler. (Sorry, there was an error.)`;
-      } finally {
-        isThinking = false;
-        updateUI();
-      }
-    }
+  // Pick best German voice
+  const voices = speechSynth.getVoices();
+  const deVoice = voices.find(v => v.lang.startsWith('de') && v.localService) ||
+                  voices.find(v => v.lang.startsWith('de')) ||
+                  null;
+  if (deVoice) {
+    utterance.voice = deVoice;
+    utterance.lang = deVoice.lang;
+  } else {
+    utterance.lang = 'de-DE';
+  }
 
-    function speakResponse(text) {
-      window.speechSynthesis.cancel(); 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'de-DE';
-      
-      const voices = window.speechSynthesis.getVoices();
-      const germanVoices = voices.filter(voice => voice.lang.includes('de'));
-      const maleVoice = germanVoices.find(voice => voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('david'));
-      
-      if (maleVoice) {
-        utterance.voice = maleVoice;
-      } else if (germanVoices.length > 0) {
-        utterance.voice = germanVoices[0]; 
-      }
+  utterance.rate = 0.9;
+  utterance.pitch = 1.0;
+  utterance.volume = 1.0;
 
-      window.speechSynthesis.speak(utterance);
-    }
+  currentlySpeaking = true;
+  utterance.onend = () => { currentlySpeaking = false; if (onDone) onDone(); };
+  utterance.onerror = () => { currentlySpeaking = false; if (onDone) onDone(); };
 
-    function updateUI() {
-      if (isListening) {
-        avatar.style.backgroundColor = '#ff4757';
-        avatar.innerText = 'Zuhören...';
-        talkBtn.innerText = 'Speak now...';
-        talkBtn.disabled = true;
-      } else if (isThinking) {
-        avatar.style.backgroundColor = '#ffa502';
-        avatar.innerText = 'Denken...';
-        talkBtn.innerText = 'Thinking...';
-        talkBtn.disabled = true;
-      } else {
-        avatar.style.backgroundColor = '#1e90ff';
-        avatar.innerText = 'Mike';
-        talkBtn.innerText = 'Tap to Speak German';
-        talkBtn.disabled = false;
-      }
-    }
-  </script>
+  // Chrome bug workaround
+  speechSynth.cancel();
+  setTimeout(() => speechSynth.speak(utterance), 100);
+}
+
+function stopSpeaking() {
+  if (speechSynth) speechSynth.cancel();
+  currentlySpeaking = false;
+}
+
+function stripForSpeech(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/[❌✅💡🎙️👤🎉🇩🇪⚠️]/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\n+/g, ' ')
+    .trim();
+}
+
+// Add speak button to AI messages
+const _origAppendMessage = appendMessage;
+window.appendMessageWithSpeak = function(role, text, panelId) {
+  const panel = document.getElementById(panelId);
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const speakBtn = role === 'ai' ? `<button class="speak-btn" onclick="speakBubble(this, ${JSON.stringify(text)})">🔊 Listen</button>` : '';
+  div.innerHTML = `
+    <div class="avatar ${role}">${role === 'ai' ? 'DM' : '🎙️'}</div>
+    <div class="bubble">${formatMessage(text)}${speakBtn}</div>
+  `;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+  return div;
+};
+
+// Override appendMessage to add speak buttons on AI messages
+const _baseAppend = appendMessage;
+window.appendMessage = function(role, text, panelId) {
+  const panel = document.getElementById(panelId);
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  const speakBtn = role === 'ai'
+    ? `<br><button class="speak-btn" onclick="speakBubble(this, \`${text.replace(/`/g,'\\`')}\`)">🔊 Listen</button>`
+    : '';
+  div.innerHTML = `
+    <div class="avatar ${role}">${role === 'ai' ? 'DM' : '👤'}</div>
+    <div class="bubble">${formatMessage(text)}${speakBtn}</div>
+  `;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+  return div;
+};
+
+function speakBubble(btn, text) {
+  if (currentlySpeaking) {
+    stopSpeaking();
+    document.querySelectorAll('.speak-btn.speaking').forEach(b => {
+      b.textContent = '🔊 Listen';
+      b.classList.remove('speaking');
+    });
+    return;
+  }
+  document.querySelectorAll('.speak-btn.speaking').forEach(b => {
+    b.textContent = '🔊 Listen';
+    b.classList.remove('speaking');
+  });
+  btn.textContent = '⏹ Stop';
+  btn.classList.add('speaking');
+  speakText(text, () => {
+    btn.textContent = '🔊 Listen';
+    btn.classList.remove('speaking');
+  });
+}
+
+// Load voices on init (Chrome needs this)
+if (speechSynth) {
+  speechSynth.getVoices();
+  speechSynth.onvoiceschanged = () => speechSynth.getVoices();
+}
+</script>
 </body>
 </html>
